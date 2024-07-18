@@ -85,7 +85,7 @@ for i in 1 2; do
 
     # Appel de la fonction d'installation
     install_glpi $DB_NAME $DB_USER $DB_PASSWORD $DOMAIN
-    if [ $? -ne 0 ]; alors
+    if [ $? -ne 0 ]; then
         echo "Erreur lors de l'installation de GLPI pour le domaine $DOMAIN."
         continue
     fi
@@ -95,5 +95,3 @@ done
 systemctl restart apache2
 
 echo "GLPI a été installé avec succès pour tous les domaines."
-
-
