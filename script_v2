@@ -1,0 +1,63 @@
+#!/bin/bash
+
+# Charger les variables depuis le fichier de configuration
+source ./glpi_config.txt
+
+# Installation des prérequis
+apt-get update
+apt-get install -y apache2 mariadb-server php php-mysql php-gd php-ldap php-curl php-cli php-xml php-mbstring unzip
+
+# Demande du mot de passe root MySQL une seule fois
+echo "Veuillez entrer le mot de passe root MySQL :"
+read -s ROOT_PASSWORD
+
+# Fonction pour installer GLPI pour un domaine donné
+install_glpi() {
+    local DB_NAME=$1
+    local DB_USER=$2
+    local DB_PASSWORD=$3
+    local DOMAIN=$4
+
+    # Création de la base de données et de l'utilisateur MySQL
+    mysql -u root -p"$ROOT_PASSWORD" -e "CREATE DATABASE IF NOT EXISTS $DB_NAME;"
+    mysql -u root -p"$ROOT_PASSWORD" -e "CREATE USER IF NOT EXISTS '$DB_USER'@'localhost' IDENTIFIED BY '$DB_PASSWORD';"
+    mysql -u root -p"$ROOT_PASSWORD" -e "GRANT ALL PRIVILEGES ON $DB_NAME.* TO '$DB_USER'@'localhost';"
+    mysql -u root -p"$ROOT_PASSWORD" -e "FLUSH PRIVILEGES;"
+
+    # Téléchargement et extraction de GLPI
+    wget -O /tmp/glpi.tgz https://github.com/glpi-project/glpi/releases/download/9.5.0/glpi-9.5.0.tgz
+    tar -xzf /tmp/glpi.tgz -C /var/www/html/
+    mv /var/www/html/glpi /var/www/html/$DOMAIN/
+    rm /tmp/glpi.tgz
+
+    # Configuration des permissions d'accès
+    chown -R www-data:www-data /var/www/html/$DOMAIN
+    chmod -R 755 /var/www/html/$DOMAIN
+}
+
+# Itérer sur chaque groupe de variables dans glpi_config.txt
+for i in 1 2; do
+    DB_NAME_VAR="DB_NAME$i"
+    DB_USER_VAR="DB_USER$i"
+    DB_PASSWORD_VAR="DB_PASSWORD$i"
+    DOMAIN_VAR="DOMAIN$i"
+
+    DB_NAME=${!DB_NAME_VAR}
+    DB_USER=${!DB_USER_VAR}
+    DB_PASSWORD=${!DB_PASSWORD_VAR}
+    DOMAIN=${!DOMAIN_VAR}
+
+    # Vérifier que les variables sont définies
+    if [ -z "$DB_NAME" ] || [ -z "$DB_USER" ] || [ -z "$DB_PASSWORD" ] || [ -z "$DOMAIN" ]; then
+        echo "Les variables pour la configuration $i ne sont pas correctement définies. Veuillez vérifier le fichier glpi_config.txt."
+        continue
+    fi
+
+    # Appel de la fonction d'installation
+    install_glpi $DB_NAME $DB_USER $DB_PASSWORD $DOMAIN
+done
+
+# Redémarrage des services
+systemctl restart apache2
+
+echo "GLPI a été installé avec succès pour tous les domaines."
