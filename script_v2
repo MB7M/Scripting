@@ -5,7 +5,7 @@ source ./glpi_config.txt
 
 # Installation des prérequis
 apt-get update
-apt-get install -y apache2 mariadb-server php php-mysql php-gd php-ldap php-curl php-cli php-xml php-mbstring unzip
+apt-get install -y apache2 mariadb-server php php-mysql php-gd php-ldap php-curl php-cli php-xml php-mbstring unzip wget
 
 # Demande du mot de passe root MySQL une seule fois
 echo "Veuillez entrer le mot de passe root MySQL :"
@@ -25,7 +25,7 @@ install_glpi() {
     mysql -u root -p"$ROOT_PASSWORD" -e "FLUSH PRIVILEGES;"
 
     # Téléchargement et extraction de GLPI
-    wget -O /tmp/glpi.tgz https://github.com/glpi-project/glpi/releases/download/9.5.0/glpi-9.5.0.tgz
+    wget -O /tmp/glpi.tgz https://github.com/glpi-project/glpi/releases/latest/download/glpi.tgz
     tar -xzf /tmp/glpi.tgz -C /var/www/html/
     mv /var/www/html/glpi /var/www/html/$DOMAIN/
     rm /tmp/glpi.tgz
