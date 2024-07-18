@@ -1,0 +1,107 @@
+#!/bin/bash
+
+# Charger les variables depuis le fichier de configuration
+source ./glpi_config.txt
+
+# Vérifier si PHP est déjà installé, sinon télécharger et extraire
+PHP_VERSION="8.2.0"
+PHP_URL="https://github.com/php/php-src/archive/php-$PHP_VERSION.tar.gz"
+PHP_DIR="/tmp/php-$PHP_VERSION"
+
+if [ ! -d "$PHP_DIR" ]; then
+    mkdir -p "$PHP_DIR"
+    wget -O /tmp/php.tar.gz "$PHP_URL"
+    tar -xzf /tmp/php.tar.gz -C /tmp/
+    rm /tmp/php.tar.gz
+fi
+
+# Installer les dépendances
+apt-get update
+apt-get install -y apache2 mariadb-server php php-mysql php-gd php-ldap php-curl php-cli php-xml php-mbstring unzip wget
+
+# Demande du mot de passe root MySQL une seule fois
+echo "Veuillez entrer le mot de passe root MySQL :"
+read -s ROOT_PASSWORD
+
+# Fonction pour installer GLPI pour un domaine donné
+install_glpi() {
+    local DB_NAME=$1
+    local DB_USER=$2
+    local DB_PASSWORD=$3
+    local DOMAIN=$4
+
+    # Création de la base de données et de l'utilisateur MySQL
+    mysql -u root -p"$ROOT_PASSWORD" -e "CREATE DATABASE IF NOT EXISTS $DB_NAME;"
+    mysql -u root -p"$ROOT_PASSWORD" -e "CREATE USER IF NOT EXISTS '$DB_USER'@'localhost' IDENTIFIED BY '$DB_PASSWORD';"
+    mysql -u root -p"$ROOT_PASSWORD" -e "GRANT ALL PRIVILEGES ON $DB_NAME.* TO '$DB_USER'@'localhost';"
+    mysql -u root -p"$ROOT_PASSWORD" -e "FLUSH PRIVILEGES;"
+
+    # Téléchargement et vérification de l'archive GLPI
+    GLPI_URL="https://github.com/glpi-project/glpi/releases/download/10.0.2/glpi-10.0.2.tgz"
+    wget -O /tmp/glpi.tgz $GLPI_URL
+    if [ $? -ne 0 ]; then
+        echo "Erreur lors du téléchargement de l'archive GLPI."
+        return 1
+    fi
+
+    # Vérification de l'intégrité de l'archive GLPI
+    tar -tzf /tmp/glpi.tgz > /dev/null
+    if [ $? -ne 0 ]; then
+        echo "Erreur: L'archive GLPI est corrompue."
+        rm /tmp/glpi.tgz
+        return 1
+    fi
+
+    # Extraction de GLPI
+    tar -xzf /tmp/glpi.tgz -C /var/www/html/
+    if [ $? -ne 0 ]; then
+        echo "Erreur lors de l'extraction de l'archive GLPI."
+        rm /tmp/glpi.tgz
+        return 1
+    fi
+
+    mv /var/www/html/glpi /var/www/html/$DOMAIN/
+    if [ $? -ne 0 ]; then
+        echo "Erreur lors du déplacement du répertoire GLPI."
+        rm -r /var/www/html/glpi
+        return 1
+    fi
+
+    # Suppression de l'archive
+    rm /tmp/glpi.tgz
+
+    # Configuration des permissions d'accès
+    chown -R www-data:www-data /var/www/html/$DOMAIN
+    chmod -R 755 /var/www/html/$DOMAIN
+}
+
+# Itérer sur chaque groupe de variables dans glpi_config.txt
+for i in 1 2; do
+    DB_NAME_VAR="DB_NAME$i"
+    DB_USER_VAR="DB_USER$i"
+    DB_PASSWORD_VAR="DB_PASSWORD$i"
+    DOMAIN_VAR="DOMAIN$i"
+
+    DB_NAME=${!DB_NAME_VAR}
+    DB_USER=${!DB_USER_VAR}
+    DB_PASSWORD=${!DB_PASSWORD_VAR}
+    DOMAIN=${!DOMAIN_VAR}
+
+    # Vérifier que les variables sont définies
+    if [ -z "$DB_NAME" ] || [ -z "$DB_USER" ] || [ -z "$DB_PASSWORD" ] || [ -z "$DOMAIN" ]; then
+        echo "Les variables pour la configuration $i ne sont pas correctement définies. Veuillez vérifier le fichier glpi_config.txt."
+        continue
+    fi
+
+    # Appel de la fonction d'installation
+    install_glpi $DB_NAME $DB_USER $DB_PASSWORD $DOMAIN
+    if [ $? -ne 0 ]; then
+        echo "Erreur lors de l'installation de GLPI pour le domaine $DOMAIN."
+        continue
+    fi
+done
+
+# Redémarrage des services
+systemctl restart apache2
+
+echo "GLPI a été installé avec succès pour tous les domaines."
