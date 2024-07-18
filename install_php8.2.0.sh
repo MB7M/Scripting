@@ -11,8 +11,8 @@ wget -qO - https://packages.sury.org/php/apt.gpg | apt-key add -
 echo "deb https://packages.sury.org/php/ $(lsb_release -sc) main" | tee /etc/apt/sources.list.d/php.list
 apt update
 
-# Installer PHP 7.4 et les modules nécessaires
-apt install -y php7.4 php7.4-cli php7.4-common php7.4-fpm php7.4-mysql php7.4-xml php7.4-mbstring php7.4-curl php7.4-zip php7.4-gd
+# Installer PHP 8.2.0 et les modules nécessaires
+apt install -y php8.2 php8.2-cli php8.2-common php8.2-fpm php8.2-mysql php8.2-xml php8.2-mbstring php8.2-curl php8.2-zip php8.2-gd
 
 # Redémarrer le serveur web Apache
 systemctl restart apache2
@@ -65,4 +65,4 @@ a2ensite glpi_domain1.conf
 systemctl reload apache2
 
 # Afficher le message de succès
-echo "PHP 7.4 et GLPI sont installés et configurés. Accédez à GLPI via votre navigateur à l'adresse http://172.18.1.60/glpi_domain1"
+echo "PHP 8.2.0 et GLPI sont installés et configurés. Accédez à GLPI via votre navigateur à l'adresse http://172.18.1.60/glpi_domain1"
