@@ -24,10 +24,37 @@ install_glpi() {
     mysql -u root -p"$ROOT_PASSWORD" -e "GRANT ALL PRIVILEGES ON $DB_NAME.* TO '$DB_USER'@'localhost';"
     mysql -u root -p"$ROOT_PASSWORD" -e "FLUSH PRIVILEGES;"
 
-    # Téléchargement et extraction de GLPI
+    # Téléchargement et vérification de l'archive GLPI
     wget -O /tmp/glpi.tgz https://github.com/glpi-project/glpi/releases/latest/download/glpi.tgz
+    if [ $? -ne 0 ]; then
+        echo "Erreur lors du téléchargement de l'archive GLPI."
+        return 1
+    fi
+
+    # Vérification de l'intégrité de l'archive GLPI
+    tar -tzf /tmp/glpi.tgz > /dev/null
+    if [ $? -ne 0 ]; then
+        echo "Erreur: L'archive GLPI est corrompue."
+        rm /tmp/glpi.tgz
+        return 1
+    fi
+
+    # Extraction de GLPI
     tar -xzf /tmp/glpi.tgz -C /var/www/html/
+    if [ $? -ne 0 ]; then
+        echo "Erreur lors de l'extraction de l'archive GLPI."
+        rm /tmp/glpi.tgz
+        return 1
+    fi
+
     mv /var/www/html/glpi /var/www/html/$DOMAIN/
+    if [ $? -ne 0 ]; then
+        echo "Erreur lors du déplacement du répertoire GLPI."
+        rm -r /var/www/html/glpi
+        return 1
+    fi
+
+    # Suppression de l'archive
     rm /tmp/glpi.tgz
 
     # Configuration des permissions d'accès
@@ -55,9 +82,14 @@ for i in 1 2; do
 
     # Appel de la fonction d'installation
     install_glpi $DB_NAME $DB_USER $DB_PASSWORD $DOMAIN
+    if [ $? -ne 0 ]; then
+        echo "Erreur lors de l'installation de GLPI pour le domaine $DOMAIN."
+        continue
+    fi
 done
 
 # Redémarrage des services
 systemctl restart apache2
 
 echo "GLPI a été installé avec succès pour tous les domaines."
+
