@@ -11,6 +11,9 @@ apt-get install -y apache2 mariadb-server php php-mysql php-gd php-ldap php-curl
 echo "Veuillez entrer le mot de passe root MySQL :"
 read -s ROOT_PASSWORD
 
+# URL fixe pour la version GLPI 10.0.2
+GLPI_URL="https://github.com/glpi-project/glpi/releases/download/10.0.2/glpi-10.0.2.tgz"
+
 # Fonction pour installer GLPI pour un domaine donné
 install_glpi() {
     local DB_NAME=$1
@@ -25,7 +28,7 @@ install_glpi() {
     mysql -u root -p"$ROOT_PASSWORD" -e "FLUSH PRIVILEGES;"
 
     # Téléchargement et vérification de l'archive GLPI
-    wget -O /tmp/glpi.tgz https://github.com/glpi-project/glpi/releases/latest/download/glpi.tgz
+    wget -O /tmp/glpi.tgz $GLPI_URL
     if [ $? -ne 0 ]; then
         echo "Erreur lors du téléchargement de l'archive GLPI."
         return 1
@@ -82,7 +85,7 @@ for i in 1 2; do
 
     # Appel de la fonction d'installation
     install_glpi $DB_NAME $DB_USER $DB_PASSWORD $DOMAIN
-    if [ $? -ne 0 ]; then
+    if [ $? -ne 0 ]; alors
         echo "Erreur lors de l'installation de GLPI pour le domaine $DOMAIN."
         continue
     fi
@@ -92,4 +95,5 @@ done
 systemctl restart apache2
 
 echo "GLPI a été installé avec succès pour tous les domaines."
+
 
