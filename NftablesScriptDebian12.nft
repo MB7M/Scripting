@@ -1,0 +1,51 @@
+#!/usr/sbin/nft -f
+
+flush ruleset
+
+table inet filter {
+    chain input {
+        type filter hook input priority 0; policy drop;
+        
+        # Autoriser le trafic local
+        iif lo accept
+        
+        # Autoriser ICMP (ping) et ICMPv6
+        ip protocol icmp accept
+        ip6 nexthdr icmpv6 accept
+        
+        # Autoriser le trafic DNS sortant vers les serveurs DNS spécifiés
+        udp dport 53 ip saddr 192.168.1.1 accept
+        udp sport 53 ip daddr 192.168.1.1 accept
+        
+        # Autoriser les connexions SSH entrantes depuis le réseau interne
+        tcp dport 22 ip saddr 192.168.1.0/24 ct state new,established accept
+        tcp sport 22 ip daddr 192.168.1.0/24 ct state established accept
+        
+        # Autoriser les connexions HTTP entrantes depuis n'importe où
+        tcp dport 80 ct state new,established accept
+        tcp sport 80 ct state established accept
+    }
+
+    chain output {
+        type filter hook output priority 0; policy drop;
+        
+        # Autoriser le trafic local
+        oif lo accept
+        
+        # Autoriser ICMP (ping) et ICMPv6
+        ip protocol icmp accept
+        ip6 nexthdr icmpv6 accept
+        
+        # Autoriser le trafic DNS sortant vers les serveurs DNS spécifiés
+        udp sport 53 ip daddr 192.168.1.1 accept
+        udp dport 53 ip saddr 192.168.1.1 accept
+        
+        # Autoriser les réponses aux connexions SSH sortantes vers le réseau interne
+        tcp sport 22 ip daddr 192.168.1.0/24 ct state new,established accept
+        tcp dport 22 ip saddr 192.168.1.0/24 ct state established accept
+        
+        # Autoriser les réponses aux connexions HTTP sortantes
+        tcp sport 80 ct state established accept
+        tcp dport 80 ct state new,established accept
+    }
+}
